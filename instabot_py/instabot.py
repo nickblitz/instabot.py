@@ -227,7 +227,7 @@ class InstaBot:
                 "window._sharedData = (.*?);</script>", info.text, re.DOTALL
             ).group(1)
         )
-        id_user = json_info["entry_data"]["ProfilePage"][0]["graphql"]["user"]["id"]
+        id_user = json_info["config"]["viewer"]["id"]
         return id_user
 
     def populate_user_blacklist(self):
@@ -996,7 +996,10 @@ class InstaBot:
                 self.logger.debug(f"This account was deleted : {user_name}")
                 return False
             raw_data = re.search("window._sharedData = (.*?);</script>", r.text, re.DOTALL).group(1)
-            user_data = json.loads(raw_data)["entry_data"]["ProfilePage"][0]["graphql"]["user"]
+            user_data = json.loads(raw_data)["entry_data"]["ProfilePage"]
+            if not user_data or not user_data[0].get('graphql'):
+                return None
+            user_data = user_data[0]["graphql"]["user"]
             user_info = dict(follows=user_data["edge_follow"]["count"],
                              followers=user_data["edge_followed_by"]["count"],
                              medias=user_data["edge_owner_to_timeline_media"]["count"],
