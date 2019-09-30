@@ -13,6 +13,8 @@ import random
 import re
 import signal
 import time
+import os
+import slack
 
 import instaloader
 import requests
@@ -21,6 +23,9 @@ from config42 import ConfigManager
 import instabot_py
 from instabot_py.default_config import DEFAULT_CONFIG
 from instabot_py.persistence.manager import PersistenceManager
+client = slack.WebClient(token=os.environ['SLACK_API_TOKEN'])
+
+slack_channel = '#malay'
 
 
 class CredsMissing(Exception):
@@ -198,8 +203,12 @@ class InstaBot:
         self.ban_sleep_time = self.config.get("ban_sleep_time")
         self.unwanted_username_list = self.config.get("unwanted_username_list")
         now_time = datetime.datetime.now()
-        self.logger.info(
-            "Instabot v{} started at {}:".format(instabot_py.__version__, now_time.strftime("%d.%m.%Y %H:%M")))
+        msg = "Instabot v{} started at {}:".format(instabot_py.__version__, now_time.strftime("%d.%m.%Y %H:%M"))
+        self.logger.info(msg)
+        response = client.chat_postMessage(
+            channel=slack_channel,
+            text=msg
+        )
         self.prog_run = True
         self.next_iteration = {
             "Like": 0,
@@ -245,8 +254,11 @@ class InstaBot:
                     ).group(1)
                 )
             except JSONDecodeError as e:
-                self.logger.info(
-                    f"Account of user {user} was deleted or link is " "invalid"
+                msg = f"Account of user {user} was deleted or link is " "invalid"
+                self.logger.info(msg)
+                response = client.chat_postMessage(
+                    channel=slack_channel,
+                    text=msg
                 )
             else:
                 # prevent exception if user have no media
@@ -255,7 +267,12 @@ class InstaBot:
                 ]
                 # Update the user_name with the user_id
                 self.user_blacklist[user] = id_user
-                self.logger.info(f"Blacklisted user {user} added with ID: {id_user}")
+                msg = f"Blacklisted user {user} added with ID: {id_user}"
+                self.logger.info(msg)
+                response = client.chat_postMessage(
+                    channel=slack_channel,
+                    text=msg
+                )
                 time.sleep(5 * random.random())
 
     def login(self):
@@ -334,7 +351,12 @@ class InstaBot:
                         challenge_url = loginResponse["checkpoint_url"]
                     else:
                         challenge_url = f"https://instagram.com{loginResponse['checkpoint_url']}"
-                    self.logger.info(f"Challenge required at {challenge_url}")
+                    msg = f"Challenge required at {challenge_url}"
+                    self.logger.info(msg)
+                    response = client.chat_postMessage(
+                        channel=slack_channel,
+                        text=msg
+                    )
                     with self.s as clg:
                         clg.headers.update(
                             {
@@ -388,7 +410,12 @@ class InstaBot:
                             allow_redirects=True,
                         )
                         if complete_challenge.status_code != 200:
-                            self.logger.info("Entered code is wrong, Try again later!")
+                            msg = "Entered code is wrong, Try again later!"
+                            self.logger.info(msg)
+                            response = client.chat_postMessage(
+                                channel=slack_channel,
+                                text=msg
+                            )
                             return
                         self.csrftoken = complete_challenge.cookies["csrftoken"]
                         self.s.headers.update(
@@ -460,7 +487,12 @@ class InstaBot:
         )
         self.logger.info(log_string)
         work_time = now_time - self.bot_start
-        self.logger.info(f"Bot work time: {work_time}")
+        msg = f"Bot work time: {work_time}"
+        self.logger.info(msg)
+        response = client.chat_postMessage(
+            channel=slack_channel,
+            text=msg
+        )
 
         try:
             _ = self.s.post(self.url_logout, data={"csrfmiddlewaretoken": self.csrftoken})
@@ -625,8 +657,12 @@ class InstaBot:
         if resp.status_code == 200:
             self.persistence.update_media_complete(media_id)
             self.unlike_counter += 1
-            self.logger.info(
-                f"Media Unliked: # {self.unlike_counter} id: {media_id}, url: {self.get_media_url(media_id)}")
+            msg = f"Media Unliked: # {self.unlike_counter} id: {media_id}, url: {self.get_media_url(media_id)}"
+            self.logger.info(msg)
+            response = client.chat_postMessage(
+                channel=slack_channel,
+                text=msg
+            )
             return True
         elif resp.status_code == 400 and resp.text == 'missing media':
             self.persistence.update_media_complete(media_id)
@@ -651,7 +687,13 @@ class InstaBot:
 
         if resp.status_code == 200:
             self.comments_counter += 1
-            self.logger.info(f"Comment: {comment_text}. #{self.comments_counter}.")
+            msg = f"Comment: {comment_text} on {self.get_media_url(media_id)} | comment #{self.comments_counter}."
+            self.logger.info(msg)
+
+            response = client.chat_postMessage(
+                channel=slack_channel,
+                text=msg
+            )
             return True
 
     def follow(self, user_id, username=None):
@@ -664,7 +706,12 @@ class InstaBot:
                 resp = self.s.post(url_follow)
                 if resp.status_code == 200:
                     self.follow_counter += 1
-                    self.logger.info(f"Followed: {self.url_user(username)} #{self.follow_counter}.")
+                    msg = f"Followed: {self.url_user(username)} #{self.follow_counter}."
+                    self.logger.info(msg)
+                    response = client.chat_postMessage(
+                        channel=slack_channel,
+                        text=msg
+                    )
                     self.persistence.insert_username(user_id=user_id, username=username)
                 return resp
             except:
@@ -682,7 +729,12 @@ class InstaBot:
 
         if resp.status_code == 200:
             self.unfollow_counter += 1
-            self.logger.info(f"Unfollowed: {self.url_user(username)} #{self.unfollow_counter}.")
+            msg = f"Unfollowed: {self.url_user(username)} #{self.unfollow_counter}."
+            self.logger.info(msg)
+            response = client.chat_postMessage(
+                channel=slack_channel,
+                text=msg
+            )
             self.persistence.insert_unfollow_count(user_id=user_id)
             return True
         else:
@@ -717,7 +769,12 @@ class InstaBot:
     def loop_controller(self):
         # 400 errors,
         if self.error_400 >= self.error_400_to_ban:
-            self.logger.info(f"Bot receives {self.error_400} HTTP_400_Error(s), You're maybe banned! ")
+            msg = f"Bot receives {self.error_400} HTTP_400_Error(s), You're maybe banned! "
+            self.logger.info(msg)
+            response = client.chat_postMessage(
+                channel=slack_channel,
+                text=msg
+            )
             self.logger.info(f"Pause for {self.ban_sleep_time} seconds")
             time.sleep(self.generate_time(self.ban_sleep_time))
             self.error_400 = 0
