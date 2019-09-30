@@ -996,9 +996,7 @@ class InstaBot:
                 self.logger.debug(f"This account was deleted : {user_name}")
                 return False
             raw_data = re.search("window._sharedData = (.*?);</script>", r.text, re.DOTALL).group(1)
-            print(raw_data)
-            if not raw_data:
-                return None
+
             user_data = json.loads(raw_data)
             user_data = user_data.get("entry_data", {}).get("ProfilePage")
             if not user_data or not user_data[0].get('graphql'):
@@ -1086,7 +1084,14 @@ class InstaBot:
 
         if resp.status_code == 200:
             raw_data = re.search("window._sharedData = (.*?);", resp.text, re.DOTALL).group(1)
-            all_data = json.loads(raw_data)["entry_data"]["PostPage"][0]
+
+
+            all_data = json.loads(raw_data)
+            all_data = all_data.get("entry_data", {}).get("PostPage")
+            if not all_data or not all_data[0].get('graphql'):
+                return None
+            else:
+                all_data = all_data[0]
 
             if all_data["graphql"]["shortcode_media"]["owner"]["id"] == self.user_id:
                 self.logger.debug("This media is yours.")
