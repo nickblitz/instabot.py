@@ -996,6 +996,9 @@ class InstaBot:
                 self.logger.debug(f"This account was deleted : {user_name}")
                 return False
             raw_data = re.search("window._sharedData = (.*?);</script>", r.text, re.DOTALL).group(1)
+            print(raw_data)
+            if not raw_data:
+                return None
             user_data = json.loads(raw_data)
             user_data = user_data.get("entry_data", {}).get("ProfilePage")
             if not user_data or not user_data[0].get('graphql'):

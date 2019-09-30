@@ -1,4 +1,4 @@
 from .instabot import InstaBot
 
 __all__ = ['InstaBot']
-__version__ = '0.6.0'
+__version__ = '0.6.1'
