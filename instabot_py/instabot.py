@@ -1142,7 +1142,8 @@ class InstaBot:
         if resp.status_code == 200:
             raw_data = re.search("window._sharedData = (.*?);", resp.text, re.DOTALL).group(1)
 
-
+            if not raw_data:
+                return False
             all_data = json.loads(raw_data)
             all_data = all_data.get("entry_data", {}).get("PostPage")
             if not all_data or not all_data[0].get('graphql'):
