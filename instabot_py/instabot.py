@@ -1089,7 +1089,7 @@ class InstaBot:
             all_data = json.loads(raw_data)
             all_data = all_data.get("entry_data", {}).get("PostPage")
             if not all_data or not all_data[0].get('graphql'):
-                return None
+                return False
             else:
                 all_data = all_data[0]
 
